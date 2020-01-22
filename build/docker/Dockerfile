@@ -4,6 +4,6 @@ RUN apk upgrade --update --no-cache && apk add libc6-compat
 
 USER nobody
 
-ADD _output/bin/atomix-tests /usr/local/bin/atomix-tests
+ADD build/_output/atomix-tests /usr/local/bin/atomix-tests
 
 ENTRYPOINT ["atomix-tests"]
