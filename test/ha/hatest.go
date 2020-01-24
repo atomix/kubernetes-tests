@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raft
+package ha
 
 import (
 	"context"
@@ -26,8 +26,8 @@ import (
 )
 
 // TestRaftHA : integration test
-func (s *HATestSuite) TestRaftHA(t *testing.T) {
-	partitions := env.Database().Partitions("raft")
+func (s *TestSuite) TestRaftHA(t *testing.T) {
+	partitions := env.Database().Partitions("protocol")
 	group, err := partitions.Connect()
 	assert.NoError(t, err)
 	assert.NotNil(t, group)

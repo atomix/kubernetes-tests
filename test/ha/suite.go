@@ -12,16 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package ha
 
 import (
-	"github.com/atomix/kubernetes-tests/test/ha"
-	"github.com/atomix/kubernetes-tests/test/primitives"
+	"github.com/onosproject/onos-test/pkg/onit/cluster"
+	"github.com/onosproject/onos-test/pkg/onit/setup"
 	"github.com/onosproject/onos-test/pkg/test"
 )
 
-func main() {
-	test.Register("primitives", &primitives.TestSuite{})
-	test.Register("ha", &ha.TestSuite{})
-	test.Main()
+// TestSuite is a suite of HA tests for Atomix primitives
+type TestSuite struct {
+	test.Suite
+}
+
+// SetupTestSuite sets up the Atomix test suite
+func (s *TestSuite) SetupTestSuite() {
+	setup.Atomix()
+	protocol := cluster.GetArg("protocol").String("raft")
+	switch protocol {
+	case "raft":
+		setup.Partitions("protocol").Raft()
+	case "nopaxos":
+		setup.Partitions("protocol").NOPaxos()
+	default:
+		setup.Partitions("protocol").Raft()
+	}
+	setup.SetupOrDie()
 }

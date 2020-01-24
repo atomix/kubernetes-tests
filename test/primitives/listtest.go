@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raft
+package primitives
 
 import (
 	"context"
@@ -24,8 +24,8 @@ import (
 )
 
 // TestAtomixList : integration test
-func (s *SmokeTestSuite) TestAtomixList(t *testing.T) {
-	group, err := env.Database().Partitions("raft").Connect()
+func (s *TestSuite) TestAtomixList(t *testing.T) {
+	group, err := env.Database().Partitions("protocol").Connect()
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 

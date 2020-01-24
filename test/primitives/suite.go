@@ -12,34 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package raft
+package primitives
 
 import (
+	"github.com/onosproject/onos-test/pkg/onit/cluster"
 	"github.com/onosproject/onos-test/pkg/onit/setup"
 	"github.com/onosproject/onos-test/pkg/test"
 )
 
-// testSuite is a suite of tests for Atomix primitives
-type testSuite struct {
+// TestSuite is a suite of tests for Atomix primitives
+type TestSuite struct {
 	test.Suite
 }
 
 // SetupTestSuite sets up the Atomix test suite
-func (s *testSuite) SetupTestSuite() {
+func (s *TestSuite) SetupTestSuite() {
 	setup.Atomix()
-	setup.Partitions("raft").
-		Raft().
-		SetPartitions(3).
-		SetReplicasPerPartition(3)
+	protocol := cluster.GetArg("protocol").String("raft")
+	switch protocol {
+	case "raft":
+		setup.Partitions("protocol").Raft()
+	case "nopaxos":
+		setup.Partitions("protocol").NOPaxos()
+	default:
+		setup.Partitions("protocol").Raft()
+	}
 	setup.SetupOrDie()
-}
-
-// SmokeTestSuite is a suite of tests for Atomix primitives
-type SmokeTestSuite struct {
-	testSuite
-}
-
-// HATestSuite is a suite of HA tests for Atomix primitives
-type HATestSuite struct {
-	testSuite
 }
