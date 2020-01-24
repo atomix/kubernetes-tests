@@ -4,6 +4,6 @@ RUN apk upgrade --update --no-cache && apk add libc6-compat
 
 USER nobody
 
-ADD build/_output/k8s-tests /usr/local/bin/k8s-tests
+ADD build/_output/kubernetes-tests /usr/local/bin/kubernetes-tests
 
-ENTRYPOINT ["k8s-tests"]
+ENTRYPOINT ["kubernetes-tests"]
