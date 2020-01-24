@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/atomix/atomix-tests/test"
+	"github.com/atomix/k8s-tests/test"
 	"github.com/onosproject/onos-test/pkg/test"
 )
 

@@ -16,8 +16,8 @@ package raft
 
 import (
 	"context"
-	atomixlock "github.com/atomix/atomix-go-client/pkg/client/lock"
-	"github.com/atomix/atomix-go-client/pkg/client/session"
+	atomixlock "github.com/atomix/go-client/pkg/client/lock"
+	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
 	"sync/atomic"

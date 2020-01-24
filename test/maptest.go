@@ -17,8 +17,8 @@ package raft
 import (
 	"bytes"
 	"context"
-	"github.com/atomix/atomix-go-client/pkg/client/map"
-	"github.com/atomix/atomix-go-client/pkg/client/session"
+	"github.com/atomix/go-client/pkg/client/map"
+	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
 	"testing"
