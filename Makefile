@@ -28,8 +28,8 @@ proto:
 		--entrypoint build/bin/compile_protos.sh \
 		onosproject/protoc-go:stable
 
-image: # @HELP build kubernetes-tests Docker image
-image: build
+images: # @HELP build kubernetes-tests Docker image
+images: build
 	docker build . -f build/docker/Dockerfile -t atomix/kubernetes-tests:${ATOMIX_TESTS_VERSION}
 
 push: # @HELP push kubernetes-tests Docker image

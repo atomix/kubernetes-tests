@@ -25,6 +25,11 @@ jobs:
     - stage: docs build
       if: type != pull_request
       script:
-            - sh build/bin/trigger-docs-travis $TRAVIS_API_TOKEN
+        - sh build/bin/trigger-docs-travis $TRAVIS_API_TOKEN
     - stage: build
-      script: make image
+      script: make build
+
+    - stage: push images
+      if: type != pull_request
+      script:
+        - bash ./build/bin/push-images
