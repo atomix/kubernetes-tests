@@ -27,7 +27,7 @@ import (
 
 // TestAtomixMap : integration test
 func (s *TestSuite) TestAtomixMap(t *testing.T) {
-	group, err := env.Database().Partitions("protocol").Connect()
+	group, err := env.Storage().Database("protocol").Connect()
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 

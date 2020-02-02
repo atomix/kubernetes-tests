@@ -31,11 +31,11 @@ func (s *TestSuite) SetupTestSuite() {
 	protocol := cluster.GetArg("protocol").String("raft")
 	switch protocol {
 	case "raft":
-		setup.Partitions("protocol").Raft()
+		setup.Database("protocol").Raft()
 	case "nopaxos":
-		setup.Partitions("protocol").NOPaxos()
+		setup.Database("protocol").NOPaxos()
 	default:
-		setup.Partitions("protocol").Raft()
+		setup.Database("protocol").Raft()
 	}
 	setup.SetupOrDie()
 }

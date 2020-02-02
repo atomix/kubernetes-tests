@@ -27,7 +27,7 @@ import (
 
 // TestRaftHA : integration test
 func (s *TestSuite) TestRaftHA(t *testing.T) {
-	partitions := env.Database().Partitions("protocol")
+	partitions := env.Storage().Database("protocol")
 	group, err := partitions.Connect()
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
