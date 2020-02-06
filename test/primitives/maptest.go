@@ -18,11 +18,9 @@ import (
 	"bytes"
 	"context"
 	"github.com/atomix/go-client/pkg/client/map"
-	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 // TestAtomixMap : integration test
@@ -31,7 +29,7 @@ func (s *TestSuite) TestAtomixMap(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 
-	m, err := group.GetMap(context.Background(), "TestAtomixMap", session.WithTimeout(5*time.Second))
+	m, err := group.GetMap(context.Background(), "TestAtomixMap")
 	assert.NoError(t, err)
 
 	ch := make(chan *_map.Entry)

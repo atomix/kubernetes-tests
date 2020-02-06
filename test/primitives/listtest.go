@@ -16,11 +16,9 @@ package primitives
 
 import (
 	"context"
-	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
 	"testing"
-	"time"
 )
 
 // TestAtomixList : integration test
@@ -29,7 +27,7 @@ func (s *TestSuite) TestAtomixList(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 
-	list, err := group.GetList(context.Background(), "TestAtomixList", session.WithTimeout(5*time.Second))
+	list, err := group.GetList(context.Background(), "TestAtomixList")
 	assert.NoError(t, err)
 
 	size, err := list.Len(context.Background())

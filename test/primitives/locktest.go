@@ -17,7 +17,6 @@ package primitives
 import (
 	"context"
 	atomixlock "github.com/atomix/go-client/pkg/client/lock"
-	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
 	"sync/atomic"
@@ -31,10 +30,10 @@ func (s *TestSuite) TestAtomixLock(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 
-	lock1, err := group.GetLock(context.Background(), "TestAtomixLock", session.WithTimeout(5*time.Second))
+	lock1, err := group.GetLock(context.Background(), "TestAtomixLock")
 	assert.NoError(t, err)
 
-	lock2, err := group.GetLock(context.Background(), "TestAtomixLock", session.WithTimeout(5*time.Second))
+	lock2, err := group.GetLock(context.Background(), "TestAtomixLock")
 	assert.NoError(t, err)
 
 	id, err := lock1.Lock(context.Background())

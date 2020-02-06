@@ -17,7 +17,6 @@ package ha
 import (
 	"context"
 	"github.com/atomix/go-client/pkg/client/map"
-	"github.com/atomix/go-client/pkg/client/session"
 	"github.com/google/uuid"
 	"github.com/onosproject/onos-test/pkg/onit/env"
 	"github.com/stretchr/testify/assert"
@@ -32,7 +31,7 @@ func (s *TestSuite) TestRaftHA(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, group)
 
-	m, err := group.GetMap(context.Background(), "TestRaftHA", session.WithTimeout(5*time.Second))
+	m, err := group.GetMap(context.Background(), "TestRaftHA")
 	assert.NoError(t, err)
 
 	ch := make(chan *_map.Event)
