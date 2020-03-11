@@ -1,6 +1,6 @@
 module github.com/atomix/kubernetes-tests
 
-go 1.12
+go 1.13
 
 require (
 	github.com/atomix/go-client v0.0.0-20200206051325-cdc03bd1c8bc
