@@ -17,19 +17,25 @@ package primitives
 import (
 	"bytes"
 	"context"
+	atomix "github.com/atomix/go-client/pkg/client"
 	"github.com/atomix/go-client/pkg/client/map"
-	"github.com/onosproject/onos-test/pkg/onit/env"
+	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // TestAtomixMap : integration test
 func (s *TestSuite) TestAtomixMap(t *testing.T) {
-	group, err := env.Storage().Database("protocol").Connect()
+	client, err := atomix.New(
+		"atomix-controller:5679",
+		atomix.WithNamespace(helm.Namespace()),
+		atomix.WithScope("TestAtomixList"))
 	assert.NoError(t, err)
-	assert.NotNil(t, group)
 
-	m, err := group.GetMap(context.Background(), "TestAtomixMap")
+	database, err := client.GetDatabase(context.Background(), "raft-database")
+	assert.NoError(t, err)
+
+	m, err := database.GetMap(context.Background(), "TestAtomixMap")
 	assert.NoError(t, err)
 
 	ch := make(chan *_map.Entry)

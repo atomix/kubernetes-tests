@@ -16,18 +16,24 @@ package primitives
 
 import (
 	"context"
-	"github.com/onosproject/onos-test/pkg/onit/env"
+	atomix "github.com/atomix/go-client/pkg/client"
+	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // TestAtomixList : integration test
 func (s *TestSuite) TestAtomixList(t *testing.T) {
-	group, err := env.Storage().Database("protocol").Connect()
+	client, err := atomix.New(
+		"atomix-controller:5679",
+		atomix.WithNamespace(helm.Namespace()),
+		atomix.WithScope("TestAtomixList"))
 	assert.NoError(t, err)
-	assert.NotNil(t, group)
 
-	list, err := group.GetList(context.Background(), "TestAtomixList")
+	database, err := client.GetDatabase(context.Background(), "raft-database")
+	assert.NoError(t, err)
+
+	list, err := database.GetList(context.Background(), "TestAtomixList")
 	assert.NoError(t, err)
 
 	size, err := list.Len(context.Background())

@@ -16,8 +16,9 @@ package primitives
 
 import (
 	"context"
+	atomix "github.com/atomix/go-client/pkg/client"
 	atomixlock "github.com/atomix/go-client/pkg/client/lock"
-	"github.com/onosproject/onos-test/pkg/onit/env"
+	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"
@@ -26,14 +27,19 @@ import (
 
 // TestAtomixLock : integration test
 func (s *TestSuite) TestAtomixLock(t *testing.T) {
-	group, err := env.Storage().Database("protocol").Connect()
+	client, err := atomix.New(
+		"atomix-controller:5679",
+		atomix.WithNamespace(helm.Namespace()),
+		atomix.WithScope("TestAtomixList"))
 	assert.NoError(t, err)
-	assert.NotNil(t, group)
 
-	lock1, err := group.GetLock(context.Background(), "TestAtomixLock")
+	database, err := client.GetDatabase(context.Background(), "raft-database")
 	assert.NoError(t, err)
 
-	lock2, err := group.GetLock(context.Background(), "TestAtomixLock")
+	lock1, err := database.GetLock(context.Background(), "TestAtomixLock")
+	assert.NoError(t, err)
+
+	lock2, err := database.GetLock(context.Background(), "TestAtomixLock")
 	assert.NoError(t, err)
 
 	id, err := lock1.Lock(context.Background())

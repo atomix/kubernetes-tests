@@ -15,9 +15,8 @@
 package primitives
 
 import (
-	"github.com/onosproject/onos-test/pkg/onit/cluster"
-	"github.com/onosproject/onos-test/pkg/onit/setup"
-	"github.com/onosproject/onos-test/pkg/test"
+	"github.com/onosproject/helmit/pkg/helm"
+	"github.com/onosproject/helmit/pkg/test"
 )
 
 // TestSuite is a suite of tests for Atomix primitives
@@ -26,16 +25,31 @@ type TestSuite struct {
 }
 
 // SetupTestSuite sets up the Atomix test suite
-func (s *TestSuite) SetupTestSuite() {
-	setup.Atomix()
-	protocol := cluster.GetArg("protocol").String("raft")
-	switch protocol {
-	case "raft":
-		setup.Database("protocol").Raft()
-	case "nopaxos":
-		setup.Database("protocol").NOPaxos()
-	default:
-		setup.Database("protocol").Raft()
+func (s *TestSuite) SetupTestSuite() error {
+	err := helm.Chart("kubernetes-controller", "https://charts.atomix.io").
+		Release("atomix-controller").
+		Set("scope", "Namespace").
+		Install(true)
+	if err != nil {
+		return err
 	}
-	setup.SetupOrDie()
+
+	err = helm.Chart("raft-storage-controller", "https://charts.atomix.io").
+		Release("raft-storage-controller").
+		Set("scope", "Namespace").
+		Install(true)
+	if err != nil {
+		return err
+	}
+
+	err = helm.Chart("raft-database", "https://charts.atomix.io").
+		Release("raft-database").
+		Set("clusters", 1).
+		Set("partitions", 1).
+		Set("replicas", 1).
+		Install(true)
+	if err != nil {
+		return err
+	}
+	return nil
 }
