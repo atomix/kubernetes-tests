@@ -15,13 +15,38 @@
 package primitives
 
 import (
+	"errors"
+	atomix "github.com/atomix/go-client/pkg/client"
 	"github.com/onosproject/helmit/pkg/helm"
+	"github.com/onosproject/helmit/pkg/kubernetes"
 	"github.com/onosproject/helmit/pkg/test"
+	"testing"
 )
 
 // TestSuite is a suite of tests for Atomix primitives
 type TestSuite struct {
 	test.Suite
+}
+
+// getClient returns the client for the test cluster
+func (s *TestSuite) getClient(t *testing.T) (*atomix.Client, error) {
+	kube, err := kubernetes.NewForRelease(helm.Release("atomix-controller"))
+	if err != nil {
+		return nil, err
+	}
+	services, err := kube.CoreV1().Services().List()
+	if err != nil {
+		return nil, err
+	}
+	if len(services) == 0 {
+		return nil, errors.New("no Atomix service found")
+	}
+	service := services[0]
+	address := service.Ports()[0].Address(true)
+	return atomix.New(
+		address,
+		atomix.WithNamespace(helm.Namespace()),
+		atomix.WithScope(t.Name()))
 }
 
 // SetupTestSuite sets up the Atomix test suite

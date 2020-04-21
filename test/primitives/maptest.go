@@ -17,19 +17,14 @@ package primitives
 import (
 	"bytes"
 	"context"
-	atomix "github.com/atomix/go-client/pkg/client"
 	"github.com/atomix/go-client/pkg/client/map"
-	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
 
 // TestAtomixMap : integration test
 func (s *TestSuite) TestAtomixMap(t *testing.T) {
-	client, err := atomix.New(
-		"atomix-controller:5679",
-		atomix.WithNamespace(helm.Namespace()),
-		atomix.WithScope("TestAtomixList"))
+	client, err := s.getClient(t)
 	assert.NoError(t, err)
 
 	database, err := client.GetDatabase(context.Background(), "raft-database")
