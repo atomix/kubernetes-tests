@@ -15,6 +15,7 @@
 package main
 
 import (
+	"github.com/atomix/kubernetes-tests/test/membership"
 	"github.com/atomix/kubernetes-tests/test/primitives"
 	"github.com/onosproject/helmit/pkg/registry"
 	"github.com/onosproject/helmit/pkg/test"
@@ -22,5 +23,6 @@ import (
 
 func main() {
 	registry.RegisterTestSuite("primitives", &primitives.TestSuite{})
+	registry.RegisterTestSuite("membership", &membership.TestSuite{})
 	test.Main()
 }
