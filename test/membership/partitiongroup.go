@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 	"testing"
 	"time"
 )
@@ -35,16 +34,26 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	client, err := atomix.New(
 		address,
 		atomix.WithNamespace(helm.Namespace()),
-		atomix.WithScope(t.Name()),
-		atomix.WithMemberID(os.Getenv("POD_NAME")))
+		atomix.WithScope(t.Name()))
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
-	group, err := client.GetPartitionGroup(context.Background(), "test-partition-group", atomix.WithPartitions(1))
+	group, err := client.GetPartitionGroup(context.Background(), "test-partition-group", atomix.WithPartitions(3))
 	assert.NoError(t, err)
 
-	watchCh := make(chan atomix.Membership)
-	err = group.Partitions()[0].MembershipGroup().Watch(context.Background(), watchCh)
+	partition1 := group.Partition(1)
+	watchCh1 := make(chan atomix.Membership)
+	err = partition1.MembershipGroup().Watch(context.Background(), watchCh1)
+	assert.NoError(t, err)
+
+	partition2 := group.Partition(2)
+	watchCh2 := make(chan atomix.Membership)
+	err = partition2.MembershipGroup().Watch(context.Background(), watchCh2)
+	assert.NoError(t, err)
+
+	partition3 := group.Partition(3)
+	watchCh3 := make(chan atomix.Membership)
+	err = partition3.MembershipGroup().Watch(context.Background(), watchCh3)
 	assert.NoError(t, err)
 
 	kube, err := kubernetes.New()
@@ -66,6 +75,7 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						"--group=test-partition-group",
+						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
 				},
@@ -91,6 +101,7 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						"--group=test-partition-group",
+						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
 				},
@@ -116,6 +127,7 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						"--group=test-partition-group",
+						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
 				},
@@ -125,65 +137,170 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	_, err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Create(pod)
 	assert.NoError(t, err)
 
-watchJoin:
-	for {
-		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
-				members[member.ID] = true
+	var watchJoin = func(join ...atomix.MemberID) {
+		partitions := make(map[atomix.PartitionID]bool)
+		for {
+			select {
+			case membership := <-watchCh1:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("1: %v", members))
+				if len(membership.Members) > 0 {
+					assert.NotNil(t, membership.Leadership)
+				}
+				joined := true
+				for _, member := range join {
+					if !members[member] {
+						joined = false
+					}
+				}
+				if joined {
+					partitions[partition1.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case membership := <-watchCh2:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("2: %v", members))
+				if len(membership.Members) > 0 {
+					assert.NotNil(t, membership.Leadership)
+				}
+				joined := true
+				for _, member := range join {
+					if !members[member] {
+						joined = false
+					}
+				}
+				if joined {
+					partitions[partition2.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case membership := <-watchCh3:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("3: %v", members))
+				if len(membership.Members) > 0 {
+					assert.NotNil(t, membership.Leadership)
+				}
+				joined := true
+				for _, member := range join {
+					if !members[member] {
+						joined = false
+					}
+				}
+				if joined {
+					partitions[partition3.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case <-time.After(1 * time.Minute):
+				t.Fail()
+				return
 			}
-			if members["test-partition-group-member-1"] && members["test-partition-group-member-2"] && members["test-partition-group-member-3"] {
-				break watchJoin
-			}
-		case <-time.After(1 * time.Minute):
-			t.Fail()
-			return
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-partition-group-member-3", &metav1.DeleteOptions{})
+	members := []atomix.MemberID{"test-partition-group-member-1", "test-partition-group-member-2", "test-partition-group-member-3"}
+	watchJoin(members...)
+
+	membership := partition1.MembershipGroup().Membership()
+	assert.NotNil(t, membership.Leadership)
+	leader := membership.Leadership.Leader
+
+	var gracePeriod int64
+	propagation := metav1.DeletePropagationForeground
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(leader), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 	assert.NoError(t, err)
 
-watchLeave:
-	for {
-		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
-				members[member.ID] = true
+	var watchLeave = func(leave ...atomix.MemberID) {
+		partitions := make(map[atomix.PartitionID]bool)
+		for {
+			select {
+			case membership := <-watchCh1:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("1: %v", members))
+				left := true
+				for _, member := range leave {
+					if members[member] {
+						left = false
+					}
+				}
+				if left {
+					partitions[partition1.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case membership := <-watchCh2:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("2: %v", members))
+				left := true
+				for _, member := range leave {
+					if members[member] {
+						left = false
+					}
+				}
+				if left {
+					partitions[partition2.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case membership := <-watchCh3:
+				members := make(map[atomix.MemberID]bool)
+				for _, member := range membership.Members {
+					members[member.ID] = true
+				}
+				println(fmt.Sprintf("3: %v", members))
+				left := true
+				for _, member := range leave {
+					if members[member] {
+						left = false
+					}
+				}
+				if left {
+					partitions[partition3.ID] = true
+					if len(partitions) == 3 {
+						return
+					}
+				}
+			case <-time.After(1 * time.Minute):
+				t.Fail()
+				return
 			}
-			if members["test-partition-group-member-1"] && members["test-partition-group-member-2"] && !members["test-partition-group-member-3"] {
-				break watchLeave
-			}
-		case <-time.After(1 * time.Minute):
-			t.Fail()
-			return
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-partition-group-member-1", &metav1.DeleteOptions{})
-	assert.NoError(t, err)
+	watchLeave(leader)
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-partition-group-member-2", &metav1.DeleteOptions{})
-	assert.NoError(t, err)
-
-watchAllLeave:
-	for {
-		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
-				members[member.ID] = true
-			}
-			if !members["test-partition-group-member-1"] && !members["test-partition-group-member-2"] && !members["test-partition-group-member-3"] {
-				break watchAllLeave
-			}
-		case <-time.After(1 * time.Minute):
-			t.Fail()
-			return
+	for _, member := range members {
+		if member != leader {
+			err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(member), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
+			assert.NoError(t, err)
 		}
 	}
+
+	watchLeave(members...)
+
+	err = group.Close()
+	assert.NoError(t, err)
 
 	err = client.Close()
 	assert.NoError(t, err)

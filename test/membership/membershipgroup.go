@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 	"testing"
 	"time"
 )
@@ -35,8 +34,7 @@ func (s *TestSuite) TestMembershipGroup(t *testing.T) {
 	client, err := atomix.New(
 		address,
 		atomix.WithNamespace(helm.Namespace()),
-		atomix.WithScope(t.Name()),
-		atomix.WithMemberID(os.Getenv("POD_NAME")))
+		atomix.WithScope(t.Name()))
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
@@ -133,6 +131,7 @@ watchJoin:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
+			println(fmt.Sprintf("%v", members))
 			if members["test-group-member-1"] && members["test-group-member-2"] && members["test-group-member-3"] {
 				break watchJoin
 			}
@@ -142,10 +141,18 @@ watchJoin:
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-3", &metav1.DeleteOptions{})
+	leadership := group.Membership().Leadership
+	assert.NotNil(t, leadership)
+	assert.NotEqual(t, leadership.Leader, atomix.MemberID(""))
+	assert.NotEqual(t, leadership.Term, atomix.TermID(0))
+	println(fmt.Sprintf("%s", leadership.Leader))
+
+	var gracePeriod int64
+	propagation := metav1.DeletePropagationForeground
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(leadership.Leader), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 	assert.NoError(t, err)
 
-watchLeave:
+watchLeaderLeave:
 	for {
 		select {
 		case membership := <-watchCh:
@@ -153,8 +160,9 @@ watchLeave:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
-			if members["test-group-member-1"] && members["test-group-member-2"] && !members["test-group-member-3"] {
-				break watchLeave
+			println(fmt.Sprintf("%v", members))
+			if !members[leadership.Leader] {
+				break watchLeaderLeave
 			}
 		case <-time.After(1 * time.Minute):
 			t.Fail()
@@ -162,11 +170,9 @@ watchLeave:
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-1", &metav1.DeleteOptions{})
-	assert.NoError(t, err)
-
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-2", &metav1.DeleteOptions{})
-	assert.NoError(t, err)
+	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-1", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
+	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-2", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
+	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-3", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 
 watchAllLeave:
 	for {
@@ -176,6 +182,7 @@ watchAllLeave:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
+			println(fmt.Sprintf("%v", members))
 			if !members["test-group-member-1"] && !members["test-group-member-2"] && !members["test-group-member-3"] {
 				break watchAllLeave
 			}
@@ -184,6 +191,9 @@ watchAllLeave:
 			return
 		}
 	}
+
+	err = group.Close()
+	assert.NoError(t, err)
 
 	err = client.Close()
 	assert.NoError(t, err)

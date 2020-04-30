@@ -23,7 +23,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"os"
 	"testing"
 	"time"
 )
@@ -35,8 +34,7 @@ func (s *TestSuite) TestMembership(t *testing.T) {
 	client, err := atomix.New(
 		address,
 		atomix.WithNamespace(helm.Namespace()),
-		atomix.WithScope(t.Name()),
-		atomix.WithMemberID(os.Getenv("POD_NAME")))
+		atomix.WithScope(t.Name()))
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 	watchCh := make(chan atomix.ClusterMembership)
@@ -126,6 +124,7 @@ watchJoin:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
+			println(fmt.Sprintf("%v", members))
 			if members["test-member-1"] && members["test-member-2"] && members["test-member-3"] {
 				break watchJoin
 			}
@@ -146,6 +145,7 @@ watchLeave:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
+			println(fmt.Sprintf("%v", members))
 			if members["test-member-1"] && members["test-member-2"] && !members["test-member-3"] {
 				break watchLeave
 			}
@@ -169,6 +169,7 @@ watchAllLeave:
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
+			println(fmt.Sprintf("%v", members))
 			if !members["test-member-1"] && !members["test-member-2"] && !members["test-member-3"] {
 				break watchAllLeave
 			}
