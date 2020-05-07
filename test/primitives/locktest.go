@@ -16,7 +16,7 @@ package primitives
 
 import (
 	"context"
-	atomixlock "github.com/atomix/go-client/pkg/client/lock"
+	atomixlock "github.com/atomix/go-client/pkg/client/database/lock"
 	"github.com/stretchr/testify/assert"
 	"sync/atomic"
 	"testing"

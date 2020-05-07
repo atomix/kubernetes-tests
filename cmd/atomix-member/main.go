@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	atomix "github.com/atomix/go-client/pkg/client"
+	"github.com/atomix/go-client/pkg/client/cluster"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -25,7 +26,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			ch := make(chan atomix.ClusterMembership)
+			ch := make(chan cluster.Membership)
 			err = client.Cluster().Watch(context.Background(), ch)
 			if err != nil {
 				return err

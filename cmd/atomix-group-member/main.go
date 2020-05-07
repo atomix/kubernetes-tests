@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	atomix "github.com/atomix/go-client/pkg/client"
+	"github.com/atomix/go-client/pkg/client/membership"
 	"github.com/spf13/cobra"
 	"os"
 	"time"
@@ -18,7 +19,7 @@ func main() {
 			test, _ := cmd.Flags().GetString("test")
 			controller, _ := cmd.Flags().GetString("controller")
 			namespace, _ := cmd.Flags().GetString("namespace")
-			group, _ := cmd.Flags().GetString("group")
+			groupName, _ := cmd.Flags().GetString("group")
 			client, err := atomix.New(
 				controller,
 				atomix.WithMemberID(member),
@@ -28,13 +29,13 @@ func main() {
 				return err
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			membership, err := client.GetMembershipGroup(ctx, group)
+			group, err := client.GetMembershipGroup(ctx, groupName)
 			cancel()
 			if err != nil {
 				return err
 			}
-			ch := make(chan atomix.Membership)
-			err = membership.Watch(context.Background(), ch)
+			ch := make(chan membership.Membership)
+			err = group.Watch(context.Background(), ch)
 			if err != nil {
 				return err
 			}

@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	atomix "github.com/atomix/go-client/pkg/client"
-	group "github.com/atomix/go-client/pkg/client/partition"
+	"github.com/atomix/go-client/pkg/client/partition"
+	"github.com/atomix/go-client/pkg/client/pb/map"
 	"github.com/spf13/cobra"
 	"os"
 	"time"
@@ -12,7 +13,7 @@ import (
 
 func main() {
 	cmd := &cobra.Command{
-		Use:  "atomix-partition-group-member",
+		Use:  "atomix-partition-group-map-member",
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			member := args[0]
@@ -30,17 +31,19 @@ func main() {
 				return err
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-			partitionGroup, err := client.GetPartitionGroup(ctx, name, group.WithPartitions(partitions))
-			cancel()
+			partitionGroup, err := client.GetPartitionGroup(ctx, name, partition.WithPartitions(partitions))
 			if err != nil {
 				return err
 			}
-			ch := make(chan group.Membership)
-			for _, partition := range partitionGroup.Partitions() {
-				err = partition.Watch(context.Background(), ch)
-				if err != nil {
-					return err
-				}
+			m, err := partitionGroup.GetMap(ctx, test)
+			if err != nil {
+				return err
+			}
+			cancel()
+			ch := make(chan _map.Event)
+			err = m.Watch(context.Background(), ch)
+			if err != nil {
+				return err
 			}
 			for event := range ch {
 				fmt.Println(event)

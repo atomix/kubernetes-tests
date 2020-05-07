@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	atomix "github.com/atomix/go-client/pkg/client"
+	"github.com/atomix/go-client/pkg/client/cluster"
 	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/onosproject/helmit/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
@@ -37,7 +38,7 @@ func (s *TestSuite) TestMembership(t *testing.T) {
 		atomix.WithScope(t.Name()))
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
-	watchCh := make(chan atomix.ClusterMembership)
+	watchCh := make(chan cluster.Membership)
 	err = client.Cluster().Watch(context.Background(), watchCh)
 	assert.NoError(t, err)
 
@@ -120,7 +121,7 @@ watchJoin:
 	for {
 		select {
 		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
+			members := make(map[cluster.MemberID]bool)
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
@@ -128,7 +129,7 @@ watchJoin:
 			if members["test-member-1"] && members["test-member-2"] && members["test-member-3"] {
 				break watchJoin
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}
@@ -141,7 +142,7 @@ watchLeave:
 	for {
 		select {
 		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
+			members := make(map[cluster.MemberID]bool)
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
@@ -149,7 +150,7 @@ watchLeave:
 			if members["test-member-1"] && members["test-member-2"] && !members["test-member-3"] {
 				break watchLeave
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}
@@ -165,7 +166,7 @@ watchAllLeave:
 	for {
 		select {
 		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
+			members := make(map[cluster.MemberID]bool)
 			for _, member := range membership.Members {
 				members[member.ID] = true
 			}
@@ -173,7 +174,7 @@ watchAllLeave:
 			if !members["test-member-1"] && !members["test-member-2"] && !members["test-member-3"] {
 				break watchAllLeave
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}

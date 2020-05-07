@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	atomix "github.com/atomix/go-client/pkg/client"
+	"github.com/atomix/go-client/pkg/client/membership"
 	"github.com/onosproject/helmit/pkg/helm"
 	"github.com/onosproject/helmit/pkg/kubernetes"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +42,7 @@ func (s *TestSuite) TestMembershipGroup(t *testing.T) {
 	group, err := client.GetMembershipGroup(context.Background(), "test-membership-group")
 	assert.NoError(t, err)
 
-	watchCh := make(chan atomix.Membership)
+	watchCh := make(chan membership.Membership)
 	err = group.Watch(context.Background(), watchCh)
 	assert.NoError(t, err)
 
@@ -126,73 +127,66 @@ func (s *TestSuite) TestMembershipGroup(t *testing.T) {
 watchJoin:
 	for {
 		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
+		case state := <-watchCh:
+			members := make(map[membership.MemberID]bool)
+			for _, member := range state.Members {
 				members[member.ID] = true
 			}
 			println(fmt.Sprintf("%v", members))
 			if members["test-group-member-1"] && members["test-group-member-2"] && members["test-group-member-3"] {
 				break watchJoin
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}
 	}
-
-	leadership := group.Membership().Leadership
-	assert.NotNil(t, leadership)
-	assert.NotEqual(t, leadership.Leader, atomix.MemberID(""))
-	assert.NotEqual(t, leadership.Term, atomix.TermID(0))
-	println(fmt.Sprintf("%s", leadership.Leader))
 
 	var gracePeriod int64
 	propagation := metav1.DeletePropagationForeground
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(leadership.Leader), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-1", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 	assert.NoError(t, err)
 
-watchLeaderLeave:
+watchLeave:
 	for {
 		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
+		case state := <-watchCh:
+			members := make(map[membership.MemberID]bool)
+			for _, member := range state.Members {
 				members[member.ID] = true
 			}
 			println(fmt.Sprintf("%v", members))
-			if !members[leadership.Leader] {
-				break watchLeaderLeave
+			if !members["test-group-member-1"] {
+				break watchLeave
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}
 	}
 
-	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-1", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-2", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 	_ = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-group-member-3", &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
 
 watchAllLeave:
 	for {
 		select {
-		case membership := <-watchCh:
-			members := make(map[atomix.MemberID]bool)
-			for _, member := range membership.Members {
+		case state := <-watchCh:
+			members := make(map[membership.MemberID]bool)
+			for _, member := range state.Members {
 				members[member.ID] = true
 			}
 			println(fmt.Sprintf("%v", members))
 			if !members["test-group-member-1"] && !members["test-group-member-2"] && !members["test-group-member-3"] {
 				break watchAllLeave
 			}
-		case <-time.After(1 * time.Minute):
+		case <-time.After(5 * time.Minute):
 			t.Fail()
 			return
 		}
 	}
 
-	err = group.Close()
+	err = group.Close(context.Background())
 	assert.NoError(t, err)
 
 	err = client.Close()

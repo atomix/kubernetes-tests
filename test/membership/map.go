@@ -28,8 +28,8 @@ import (
 	"time"
 )
 
-// TestPartitionGroup : integration test
-func (s *TestSuite) TestPartitionGroup(t *testing.T) {
+// TestMap : integration test
+func (s *TestSuite) TestMap(t *testing.T) {
 	address, err := s.getControllerAddress()
 	assert.NoError(t, err)
 	client, err := atomix.New(
@@ -39,7 +39,7 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotNil(t, client)
 
-	group, err := client.GetPartitionGroup(context.Background(), "test-partition-group", partition.WithPartitions(3))
+	group, err := client.GetPartitionGroup(context.Background(), "test-partition-group-map", partition.WithPartitions(3))
 	assert.NoError(t, err)
 
 	partition1 := group.Partition(1)
@@ -63,19 +63,19 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-partition-group-member-1",
+			Name:      "test-partition-group-map-member-1",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-partition-group-member",
-					Image:           "atomix/test-partition-group-member:latest",
+					Name:            "test-partition-group-map-member",
+					Image:           "atomix/test-partition-group-map-member:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-partition-group-member-1",
+						"test-partition-group-map-member-1",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
-						"--group=test-partition-group",
+						"--group=test-partition-group-map",
 						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
@@ -89,19 +89,19 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-partition-group-member-2",
+			Name:      "test-partition-group-map-member-2",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-partition-group-member",
-					Image:           "atomix/test-partition-group-member:latest",
+					Name:            "test-partition-group-map-member",
+					Image:           "atomix/test-partition-group-map-member:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-partition-group-member-2",
+						"test-partition-group-map-member-2",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
-						"--group=test-partition-group",
+						"--group=test-partition-group-map",
 						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
@@ -115,19 +115,19 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 	pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-partition-group-member-3",
+			Name:      "test-partition-group-map-member-3",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-partition-group-member",
-					Image:           "atomix/test-partition-group-member:latest",
+					Name:            "test-partition-group-map-member",
+					Image:           "atomix/test-partition-group-map-member:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-partition-group-member-3",
+						"test-partition-group-map-member-3",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
-						"--group=test-partition-group",
+						"--group=test-partition-group-map",
 						"--partitions=3",
 						fmt.Sprintf("--test=%s", t.Name()),
 					},
@@ -205,100 +205,59 @@ func (s *TestSuite) TestPartitionGroup(t *testing.T) {
 						return
 					}
 				}
-			case <-time.After(5 * time.Minute):
+			case <-time.After(1 * time.Minute):
 				t.Fail()
 				return
 			}
 		}
 	}
 
-	members := []partition.MemberID{"test-partition-group-member-1", "test-partition-group-member-2", "test-partition-group-member-3"}
+	members := []partition.MemberID{"test-partition-group-map-member-1", "test-partition-group-map-member-2", "test-partition-group-map-member-3"}
 	watchJoin(members...)
 
-	membership := partition1.Membership()
-	assert.NotNil(t, membership.Leadership)
-	leader := membership.Leadership.Leader
-
-	var gracePeriod int64
-	propagation := metav1.DeletePropagationForeground
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(leader), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	m, err := group.GetMap(ctx, t.Name())
+	cancel()
 	assert.NoError(t, err)
+	assert.NotNil(t, m)
 
-	var watchLeave = func(leave ...partition.MemberID) {
-		partitions := make(map[partition.ID]bool)
-		for {
-			select {
-			case membership := <-watchCh1:
-				members := make(map[partition.MemberID]bool)
-				for _, member := range membership.Members {
-					members[member.ID] = true
-				}
-				println(fmt.Sprintf("1: %v", members))
-				left := true
-				for _, member := range leave {
-					if members[member] {
-						left = false
-					}
-				}
-				if left {
-					partitions[partition1.ID] = true
-					if len(partitions) == 3 {
-						return
-					}
-				}
-			case membership := <-watchCh2:
-				members := make(map[partition.MemberID]bool)
-				for _, member := range membership.Members {
-					members[member.ID] = true
-				}
-				println(fmt.Sprintf("2: %v", members))
-				left := true
-				for _, member := range leave {
-					if members[member] {
-						left = false
-					}
-				}
-				if left {
-					partitions[partition2.ID] = true
-					if len(partitions) == 3 {
-						return
-					}
-				}
-			case membership := <-watchCh3:
-				members := make(map[partition.MemberID]bool)
-				for _, member := range membership.Members {
-					members[member.ID] = true
-				}
-				println(fmt.Sprintf("3: %v", members))
-				left := true
-				for _, member := range leave {
-					if members[member] {
-						left = false
-					}
-				}
-				if left {
-					partitions[partition3.ID] = true
-					if len(partitions) == 3 {
-						return
-					}
-				}
-			case <-time.After(5 * time.Minute):
-				t.Fail()
-				return
-			}
-		}
-	}
+	entry, err := m.Get(context.Background(), "foo")
+	assert.NoError(t, err)
+	assert.Nil(t, entry)
 
-	watchLeave(leader)
+	entry, err = m.Put(context.Background(), "foo", []byte("bar"))
+	assert.NoError(t, err)
+	assert.NotNil(t, entry)
+	assert.Equal(t, "foo", entry.Key)
+	assert.Equal(t, "bar", string(entry.Value))
+	assert.NotEqual(t, 0, entry.Version)
+	version := entry.Version
 
-	for _, member := range members {
-		if member != leader {
-			err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete(string(member), &metav1.DeleteOptions{GracePeriodSeconds: &gracePeriod, PropagationPolicy: &propagation})
-			assert.NoError(t, err)
-		}
-	}
+	entry, err = m.Get(context.Background(), "foo")
+	assert.NoError(t, err)
+	assert.NotNil(t, entry)
+	assert.Equal(t, "foo", entry.Key)
+	assert.Equal(t, "bar", string(entry.Value))
+	assert.Equal(t, version, entry.Version)
 
-	watchLeave(members...)
+	size, err := m.Len(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 1, size)
+
+	entry, err = m.Remove(context.Background(), "foo")
+	assert.NoError(t, err)
+	assert.NotNil(t, entry)
+	assert.Equal(t, "foo", entry.Key)
+	assert.Equal(t, "bar", string(entry.Value))
+	assert.Equal(t, version, entry.Version)
+
+	entry, err = m.Get(context.Background(), "foo")
+	assert.NoError(t, err)
+	assert.Nil(t, entry)
+
+	size, err = m.Len(context.Background())
+	assert.NoError(t, err)
+	assert.Equal(t, 0, size)
 
 	err = group.Close(context.Background())
 	assert.NoError(t, err)

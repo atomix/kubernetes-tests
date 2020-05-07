@@ -17,7 +17,7 @@ package primitives
 import (
 	"bytes"
 	"context"
-	"github.com/atomix/go-client/pkg/client/map"
+	"github.com/atomix/go-client/pkg/client/database/map"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )
