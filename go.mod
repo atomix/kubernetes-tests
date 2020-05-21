@@ -7,3 +7,5 @@ require (
 	github.com/onosproject/helmit v0.6.0
 	github.com/stretchr/testify v1.5.1
 )
+
+replace github.com/atomix/go-client => ../atomix-go-client
