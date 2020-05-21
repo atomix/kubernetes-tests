@@ -15,12 +15,14 @@
 package main
 
 import (
+	"github.com/atomix/kubernetes-tests/test/peers"
 	"github.com/atomix/kubernetes-tests/test/primitives"
 	"github.com/onosproject/helmit/pkg/registry"
 	"github.com/onosproject/helmit/pkg/test"
 )
 
 func main() {
+	registry.RegisterTestSuite("peers", &peers.TestSuite{})
 	registry.RegisterTestSuite("primitives", &primitives.TestSuite{})
 	test.Main()
 }

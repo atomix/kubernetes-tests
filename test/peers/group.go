@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package membership
+package peers
 
 import (
 	"context"
@@ -28,8 +28,8 @@ import (
 	"time"
 )
 
-// TestMembership : integration test
-func (s *TestSuite) TestMembership(t *testing.T) {
+// TestPeers : integration test
+func (s *TestSuite) TestPeers(t *testing.T) {
 	address, err := s.getControllerAddress()
 	assert.NoError(t, err)
 	client, err := atomix.New(
@@ -48,16 +48,16 @@ func (s *TestSuite) TestMembership(t *testing.T) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-member-1",
+			Name:      "test-peer-1",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-member",
-					Image:           "atomix/test-member:latest",
+					Name:            "test-peer",
+					Image:           "atomix/test-peer:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-member-1",
+						"test-peer-1",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						fmt.Sprintf("--test=%s", t.Name()),
@@ -72,16 +72,16 @@ func (s *TestSuite) TestMembership(t *testing.T) {
 	pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-member-2",
+			Name:      "test-peer-2",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-member",
-					Image:           "atomix/test-member:latest",
+					Name:            "test-peer",
+					Image:           "atomix/test-peer:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-member-2",
+						"test-peer-2",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						fmt.Sprintf("--test=%s", t.Name()),
@@ -96,16 +96,16 @@ func (s *TestSuite) TestMembership(t *testing.T) {
 	pod = &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace: kube.Namespace(),
-			Name:      "test-member-3",
+			Name:      "test-peer-3",
 		},
 		Spec: corev1.PodSpec{
 			Containers: []corev1.Container{
 				{
-					Name:            "test-member",
-					Image:           "atomix/test-member:latest",
+					Name:            "test-peer",
+					Image:           "atomix/test-peer:latest",
 					ImagePullPolicy: corev1.PullNever,
 					Args: []string{
-						"test-member-3",
+						"test-peer-3",
 						fmt.Sprintf("--controller=%s", address),
 						fmt.Sprintf("--namespace=%s", kube.Namespace()),
 						fmt.Sprintf("--test=%s", t.Name()),
@@ -122,7 +122,7 @@ watchJoin:
 		select {
 		case peers := <-watchCh:
 			println(fmt.Sprintf("%v", peers))
-			if peers["test-member-1"] != nil && peers["test-member-2"] != nil && peers["test-member-3"] != nil {
+			if peers["test-peer-1"] != nil && peers["test-peer-2"] != nil && peers["test-peer-3"] != nil {
 				break watchJoin
 			}
 		case <-time.After(5 * time.Minute):
@@ -131,7 +131,7 @@ watchJoin:
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-member-3", &metav1.DeleteOptions{})
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-peer-3", &metav1.DeleteOptions{})
 	assert.NoError(t, err)
 
 watchLeave:
@@ -139,7 +139,7 @@ watchLeave:
 		select {
 		case peers := <-watchCh:
 			println(fmt.Sprintf("%v", peers))
-			if peers["test-member-1"] != nil && peers["test-member-2"] != nil && peers["test-member-3"] == nil {
+			if peers["test-peer-1"] != nil && peers["test-peer-2"] != nil && peers["test-peer-3"] == nil {
 				break watchLeave
 			}
 		case <-time.After(5 * time.Minute):
@@ -148,10 +148,10 @@ watchLeave:
 		}
 	}
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-member-1", &metav1.DeleteOptions{})
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-peer-1", &metav1.DeleteOptions{})
 	assert.NoError(t, err)
 
-	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-member-2", &metav1.DeleteOptions{})
+	err = kube.Clientset().CoreV1().Pods(kube.Namespace()).Delete("test-peer-2", &metav1.DeleteOptions{})
 	assert.NoError(t, err)
 
 watchAllLeave:
@@ -159,7 +159,7 @@ watchAllLeave:
 		select {
 		case peers := <-watchCh:
 			println(fmt.Sprintf("%v", peers))
-			if peers["test-member-1"] == nil && peers["test-member-2"] == nil && peers["test-member-3"] == nil {
+			if peers["test-peer-1"] == nil && peers["test-peer-2"] == nil && peers["test-peer-3"] == nil {
 				break watchAllLeave
 			}
 		case <-time.After(5 * time.Minute):
